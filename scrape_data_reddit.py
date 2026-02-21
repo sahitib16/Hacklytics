@@ -24,6 +24,12 @@ Optional env vars:
     LOCAL_EMBED_DIM=1024
     CHUNK_SIZE_WORDS=220
     CHUNK_OVERLAP_WORDS=40
+
+JSONL ingest format for `ingest-file`:
+    One JSON object per line, with at least:
+      - text (required)
+    Optional fields:
+      - id, source, url, title, author, created_at, score, metadata
 """
 
 from __future__ import annotations
@@ -637,6 +643,45 @@ def semantic_search(
     return store.search(query_vector=q_vec, top_k=top_k, source_filter=source_filter)
 
 
+def ingest_documents(docs: list[RawDocument]) -> None:
+    chunk_size_words = env_int("CHUNK_SIZE_WORDS", 220)
+    chunk_overlap_words = env_int("CHUNK_OVERLAP_WORDS", 40)
+    local_embed_dim = env_int("LOCAL_EMBED_DIM", 1024)
+    cortex_address = os.getenv("CORTEX_ADDRESS", "localhost:50051")
+    collection_name = os.getenv("ACTIAN_COLLECTION_NAME", "endgame_opinions")
+    recreate_collection = os.getenv("ACTIAN_RECREATE_COLLECTION", "false").lower() == "true"
+
+    if not docs:
+        raise RuntimeError("No documents to ingest.")
+
+    # De-dup by source + url + text hash.
+    deduped: dict[str, RawDocument] = {}
+    for d in docs:
+        key = stable_id(d.source, d.url, d.text[:1500])
+        deduped[key] = d
+    docs = list(deduped.values())
+
+    chunks = build_chunks(docs, chunk_size_words=chunk_size_words, overlap_words=chunk_overlap_words)
+    if not chunks:
+        raise RuntimeError("No chunks generated from scraped documents.")
+
+    embedder = LocalHasherEmbedder(dim=local_embed_dim)
+    embeddings = embedder.embed_texts([c.text for c in chunks])
+
+    store = ActianCortexStore(
+        address=cortex_address,
+        collection_name=collection_name,
+        dimension=local_embed_dim,
+        recreate=recreate_collection,
+    )
+    store.upsert_chunks(chunks, embeddings)
+
+    print(
+        f"Ingest complete. docs={len(docs)}, chunks={len(chunks)}, "
+        f"collection={collection_name}, address={cortex_address}"
+    )
+
+
 def ingest_pipeline() -> None:
     query = "Avengers Endgame opinions"
     subreddits = [s.strip() for s in os.getenv("REDDIT_SUBREDDITS", "marvelstudios,movies,marvel").split(",")]
@@ -647,12 +692,6 @@ def ingest_pipeline() -> None:
     topic_urls = [s.strip() for s in os.getenv("QUORA_TOPIC_URLS", "https://www.quora.com/topic/Avengers-Endgame").split(",")]
     max_questions = env_int("QUORA_MAX_QUESTIONS", 60)
     quora_delay = env_float("QUORA_REQUEST_DELAY_SECONDS", 1.0)
-    chunk_size_words = env_int("CHUNK_SIZE_WORDS", 220)
-    chunk_overlap_words = env_int("CHUNK_OVERLAP_WORDS", 40)
-    local_embed_dim = env_int("LOCAL_EMBED_DIM", 1024)
-    cortex_address = os.getenv("CORTEX_ADDRESS", "localhost:50051")
-    collection_name = os.getenv("ACTIAN_COLLECTION_NAME", "endgame_opinions")
-    recreate_collection = os.getenv("ACTIAN_RECREATE_COLLECTION", "false").lower() == "true"
 
     use_praw = (
         reddit_mode == "praw"
@@ -682,33 +721,56 @@ def ingest_pipeline() -> None:
     all_docs = reddit_docs + quora_docs
     if not all_docs:
         raise RuntimeError("No documents scraped. Check API keys and source limits.")
+    ingest_documents(all_docs)
 
-    # De-dup by source + url + text hash.
-    deduped: dict[str, RawDocument] = {}
-    for d in all_docs:
-        key = stable_id(d.source, d.url, d.text[:1500])
-        deduped[key] = d
-    docs = list(deduped.values())
 
-    chunks = build_chunks(docs, chunk_size_words=chunk_size_words, overlap_words=chunk_overlap_words)
-    if not chunks:
-        raise RuntimeError("No chunks generated from scraped documents.")
-
-    embedder = LocalHasherEmbedder(dim=local_embed_dim)
-    embeddings = embedder.embed_texts([c.text for c in chunks])
-
-    store = ActianCortexStore(
-        address=cortex_address,
-        collection_name=collection_name,
-        dimension=local_embed_dim,
-        recreate=recreate_collection,
-    )
-    store.upsert_chunks(chunks, embeddings)
-
-    print(
-        f"Ingest complete. docs={len(docs)}, chunks={len(chunks)}, "
-        f"collection={collection_name}, address={cortex_address}"
-    )
+def ingest_file_pipeline(path: str) -> None:
+    docs: list[RawDocument] = []
+    with open(path, "r", encoding="utf-8") as f:
+        for i, line in enumerate(f, start=1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except Exception:
+                continue
+            text = clean_text(str(obj.get("text", "")))
+            if len(text) < 20:
+                continue
+            source = clean_text(str(obj.get("source", "dataset"))) or "dataset"
+            url = clean_text(str(obj.get("url", ""))) or f"dataset://{source}"
+            title = clean_text(str(obj.get("title", ""))) or "Dataset record"
+            author = clean_text(str(obj.get("author", ""))) or "unknown"
+            score = int(obj.get("score", 0) or 0)
+            created_at_raw = obj.get("created_at")
+            created_at = datetime.now(tz=timezone.utc)
+            if isinstance(created_at_raw, str) and created_at_raw:
+                try:
+                    created_at = datetime.fromisoformat(created_at_raw.replace("Z", "+00:00"))
+                except Exception:
+                    created_at = datetime.now(tz=timezone.utc)
+            doc_id = str(obj.get("id", "")) or stable_id("dataset_doc", source, url, str(i))
+            metadata = obj.get("metadata")
+            if not isinstance(metadata, dict):
+                metadata = {}
+            metadata = {**metadata, "dataset_row": i}
+            docs.append(
+                RawDocument(
+                    doc_id=stable_id("dataset_doc_norm", doc_id),
+                    source=source,
+                    url=url,
+                    title=title,
+                    author=author,
+                    created_at=created_at,
+                    score=score,
+                    text=text,
+                    metadata=metadata,
+                )
+            )
+    if not docs:
+        raise RuntimeError(f"No valid documents found in JSONL file: {path}")
+    ingest_documents(docs)
 
 
 def run_search(query: str, top_k: int, source_filter: str | None) -> None:
@@ -732,6 +794,8 @@ def main() -> None:
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("ingest", help="Scrape Reddit+Quora, embed, and write into Actian")
+    ingest_file_p = sub.add_parser("ingest-file", help="Ingest JSONL dataset file into Actian")
+    ingest_file_p.add_argument("--path", required=True, help="Path to JSONL file (one JSON object per line)")
 
     search_p = sub.add_parser("search", help="Semantic search over stored chunks")
     search_p.add_argument("--query", required=True)
@@ -742,6 +806,8 @@ def main() -> None:
 
     if args.cmd == "ingest":
         ingest_pipeline()
+    elif args.cmd == "ingest-file":
+        ingest_file_pipeline(path=args.path)
     elif args.cmd == "search":
         run_search(query=args.query, top_k=args.top_k, source_filter=args.source)
 
