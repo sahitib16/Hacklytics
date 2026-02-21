@@ -1,0 +1,31 @@
+{
+  "id": "avengers-endgame",
+  "title": "Avengers: Endgame",
+  "year": 2019,
+  "predictions": {
+    "imdb": {
+      "current": 84.0,
+      "predicted": 83.0,
+      "delta": -1.0
+    },
+    "rt": {
+      "current": 94.0,
+      "predicted": 93.0,
+      "delta": -1.0
+    },
+    "fanRating": {
+      "positivePercent": 66.67,
+      "negativePercent": 33.33,
+      "netSentiment": 33.33
+    },
+    "boxOffice": {
+      "currentUsd": 858373000,
+      "predictedUsd": 841205540,
+      "deltaPercent": -2.0
+    }
+  },
+  "assumptions": [
+    "The user expressed satisfaction with the fates of Tony Stark and Captain America, aligning with the movie's narrative.",
+    "The user's preferences regarding the fates of Thanos, Thor, and Natasha Romanoff diverged from the movie's narrative, indicating potential for slight dissatisfaction among a segment of the audience, leading to minor downward adjustments in predicted scores and box office."
+  ]
+}

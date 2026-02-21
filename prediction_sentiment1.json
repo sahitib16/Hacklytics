@@ -1,0 +1,31 @@
+{
+  "id": "avengers-endgame",
+  "title": "Avengers: Endgame",
+  "year": 2019,
+  "predictions": {
+    "imdb": {
+      "current": 8.4,
+      "predicted": 8.3,
+      "delta": -0.1
+    },
+    "rt": {
+      "current": 94.0,
+      "predicted": 93.0,
+      "delta": -1.0
+    },
+    "fanRating": {
+      "positivePercent": 50.0,
+      "negativePercent": 50.0,
+      "netSentiment": 0.0
+    },
+    "boxOffice": {
+      "currentUsd": 858373000,
+      "predictedUsd": 850000000,
+      "deltaPercent": -1.0
+    }
+  },
+  "assumptions": [
+    "User sentiment indicating a preference for different fates for Captain America (should have died), Thanos (should have lived), Thor (should have died), and Natasha Romanoff (should have lived) suggests a potential for minor long-term dissatisfaction.",
+    "The emotional impact of Tony Stark's death, approved by the user, contributed positively to the film's initial reception but is balanced by other character arc preferences."
+  ]
+}

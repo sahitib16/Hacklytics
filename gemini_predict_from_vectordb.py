@@ -83,7 +83,9 @@ def extract_market_baseline(hits: list[dict[str, Any]]) -> dict[str, Any]:
         bo = meta.get("box_office")
         try:
             if imdb and str(imdb) != "N/A":
-                baseline["imdb"] = float(str(imdb))
+                imdb_val = float(str(imdb))
+                # OMDb IMDb is often on a 0..10 scale; convert to percentage.
+                baseline["imdb"] = imdb_val * 10.0 if imdb_val <= 10.0 else imdb_val
         except Exception:
             pass
         if rt and str(rt) != "N/A":
