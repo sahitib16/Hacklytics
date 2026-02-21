@@ -1,0 +1,31 @@
+{
+  "id": "avengers-endgame",
+  "title": "Avengers: Endgame",
+  "year": 2019,
+  "predictions": {
+    "imdb": {
+      "current": 8.4,
+      "predicted": 8.5,
+      "delta": 0.1
+    },
+    "rt": {
+      "current": 94.0,
+      "predicted": 95.0,
+      "delta": 1.0
+    },
+    "fanRating": {
+      "positivePercent": 100.0,
+      "negativePercent": 0.0,
+      "netSentiment": 100.0
+    },
+    "boxOffice": {
+      "currentUsd": 858373000,
+      "predictedUsd": 901291650,
+      "deltaPercent": 5.0
+    }
+  },
+  "assumptions": [
+    "Overwhelmingly positive fan sentiment, describing the film as a 'masterpiece' with 'epic-ness' and 'cinematic history' moments, indicates enduring critical and commercial success.",
+    "The well-executed climax, impactful dialogue, and effective plot resolution contributed to a highly satisfying and memorable viewing experience, driving strong audience engagement."
+  ]
+}
