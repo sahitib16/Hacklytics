@@ -195,6 +195,67 @@ def objective_score(pred: dict[str, Any]) -> float:
     return imdb_delta + rt_delta + (0.2 * fan_net) + (0.1 * box_delta_pct)
 
 
+def llm_question_impacts(payload: dict[str, Any], prepared: dict[str, Any], model: Any) -> list[dict[str, Any]]:
+    prompt = f"""
+Return ONLY valid JSON (no markdown).
+
+Given this QA payload:
+{json.dumps(payload, ensure_ascii=True)}
+
+Retrieved evidence:
+{prepared.get("context", "")}
+
+Return exactly this JSON array shape:
+[
+  {{
+    "id": "<question id>",
+    "text": "<question text>",
+    "answer": "yes|no|other",
+    "impact": {{
+      "imdbDelta": <number>,
+      "rtDelta": <number>,
+      "fanDelta": <number>,
+      "boxOfficeDeltaPct": <number>
+    }}
+  }}
+]
+
+Rules:
+- Include one object per question in input order.
+- Deltas should be signed (positive or negative) based on the provided answer.
+- Keep values realistic: imdb/rt in roughly -10..10, fanDelta in -25..25, boxOfficeDeltaPct in -30..30.
+- Base impacts on evidence and answers, not random values.
+"""
+    response = model.generate_content(
+        prompt,
+        generation_config={"response_mime_type": "application/json"},
+    )
+    raw = safe_json_load(response.text)
+    if not isinstance(raw, list):
+        raise ValueError("LLM question impacts response was not a JSON array")
+    cleaned: list[dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        impact = item.get("impact", {})
+        if not isinstance(impact, dict):
+            impact = {}
+        cleaned.append(
+            {
+                "id": str(item.get("id", "")),
+                "text": str(item.get("text", "")),
+                "answer": str(item.get("answer", "")),
+                "impact": {
+                    "imdbDelta": round(to_float(impact.get("imdbDelta"), 0.0), 3),
+                    "rtDelta": round(to_float(impact.get("rtDelta"), 0.0), 3),
+                    "fanDelta": round(to_float(impact.get("fanDelta"), 0.0), 3),
+                    "boxOfficeDeltaPct": round(to_float(impact.get("boxOfficeDeltaPct"), 0.0), 3),
+                },
+            }
+        )
+    return cleaned
+
+
 def prepare_retrieval_context(payload: dict[str, Any], top_k_per_query: int = 8) -> dict[str, Any]:
     hits = retrieve_related_hits(payload, top_k_per_query=top_k_per_query)
     fan = fan_sentiment_from_hits(hits)
@@ -401,6 +462,11 @@ def main() -> None:
             prepared=prepared,
             model=model,
         )
+    if isinstance(result, dict):
+        try:
+            result["questionImpacts"] = llm_question_impacts(payload=payload, prepared=prepared, model=model)
+        except Exception:
+            result["questionImpacts"] = []
 
     print(json.dumps(result, indent=2, ensure_ascii=True))
     if args.output:

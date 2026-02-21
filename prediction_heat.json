@@ -1,0 +1,33 @@
+{
+  "id": "avengers-endgame",
+  "title": "Avengers: Endgame",
+  "year": 2019,
+  "predictions": {
+    "imdb": {
+      "current": 84.0,
+      "predicted": 85.0,
+      "delta": 1.0
+    },
+    "rt": {
+      "current": 94.0,
+      "predicted": 95.0,
+      "delta": 1.0
+    },
+    "fanRating": {
+      "positivePercent": 100.0,
+      "negativePercent": 0.0,
+      "netSentiment": 100.0
+    },
+    "boxOffice": {
+      "currentUsd": 858373000,
+      "predictedUsd": 866956730,
+      "deltaPercent": 1.0
+    }
+  },
+  "assumptions": [
+    "The user's preference for Tony Stark's death (yes) aligns with the movie's plot and is reflected in the high positive fan sentiment for Avengers: Endgame.",
+    "The user's preference for Captain America not dying (no) also aligns with the movie's plot (his aging) and contributes to the overall positive fan sentiment.",
+    "The overwhelmingly positive fan sentiment (100% positive) suggests that the key plot decisions, including the fates of central characters, were well-received by the audience, leading to slight increases in critical ratings and a reinforced strong box office performance."
+  ],
+  "questionImpacts": []
+}

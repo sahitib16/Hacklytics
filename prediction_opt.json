@@ -1,0 +1,99 @@
+{
+  "id": "avengers-endgame",
+  "title": "Avengers: Endgame",
+  "year": 2019,
+  "predictions": {
+    "imdb": {
+      "current": 84.0,
+      "predicted": 86.0,
+      "delta": 2.0
+    },
+    "rt": {
+      "current": 94.0,
+      "predicted": 96.0,
+      "delta": 2.0
+    },
+    "fanRating": {
+      "positivePercent": 100.0,
+      "negativePercent": 0.0,
+      "netSentiment": 100.0
+    },
+    "boxOffice": {
+      "currentUsd": 858373000,
+      "predictedUsd": 871258595,
+      "deltaPercent": 1.5
+    }
+  },
+  "assumptions": [
+    "The overwhelmingly positive fan sentiment (100% net sentiment) indicates strong approval of the movie's narrative choices, including character fates.",
+    "User answers regarding Tony Stark's death ('yes') and Captain America's non-death ('no') align with the film's actual plot and contribute to the movie's strong fan reception.",
+    "The very high baseline ratings (IMDb 84%, RT 94%) suggest that significant further increases are unlikely, but the strong positive sentiment supports a slight upward adjustment.",
+    "Box office prediction reflects sustained interest and moderate ancillary revenue growth due to high fan satisfaction, rather than a significant new theatrical boost."
+  ],
+  "optimal": {
+    "attemptedCombos": 4,
+    "evaluatedCombos": 4,
+    "failedCombos": 0,
+    "failureReasons": {},
+    "bestAnswers": {
+      "8b614d53-7664-4b96-be9f-ea0f938450f7": "yes",
+      "3db437df-b345-483d-a14b-c266b1a248e3": "yes"
+    },
+    "objectiveScore": 22.5,
+    "bestPrediction": {
+      "id": "avengers-endgame",
+      "title": "Avengers: Endgame",
+      "year": 2019,
+      "predictions": {
+        "imdb": {
+          "current": 84.0,
+          "predicted": 85.0,
+          "delta": 1.0
+        },
+        "rt": {
+          "current": 94.0,
+          "predicted": 95.0,
+          "delta": 1.0
+        },
+        "fanRating": {
+          "positivePercent": 100.0,
+          "negativePercent": 0.0,
+          "netSentiment": 100.0
+        },
+        "boxOffice": {
+          "currentUsd": 858373000,
+          "predictedUsd": 901291650,
+          "deltaPercent": 5.0
+        }
+      },
+      "assumptions": [
+        "Overwhelmingly positive fan sentiment (100% net sentiment) indicates strong audience satisfaction and potential for sustained interest.",
+        "User acceptance of major plot points, specifically the deaths of Tony Stark and Captain America, suggests these narrative choices resonated positively with the audience."
+      ]
+    }
+  },
+  "questionImpacts": [
+    {
+      "id": "8b614d53-7664-4b96-be9f-ea0f938450f7",
+      "text": "Should Tony Stark have died?",
+      "answer": "yes",
+      "impact": {
+        "imdbDelta": 1.0,
+        "rtDelta": 2.0,
+        "fanDelta": 15.0,
+        "boxOfficeDeltaPct": 10.0
+      }
+    },
+    {
+      "id": "3db437df-b345-483d-a14b-c266b1a248e3",
+      "text": "Should Captain America have died",
+      "answer": "no",
+      "impact": {
+        "imdbDelta": 0.5,
+        "rtDelta": 1.0,
+        "fanDelta": 10.0,
+        "boxOfficeDeltaPct": 5.0
+      }
+    }
+  ]
+}

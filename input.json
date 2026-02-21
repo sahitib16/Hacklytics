@@ -7,25 +7,10 @@
     {
       "id": "3db437df-b345-483d-a14b-c266b1a248e3",
       "text": "Should Captain America have died"
-    },
-    {
-      "id": "621c9de5-eaa6-4e67-94a7-927a234b11c0",
-      "text": "Should Thanos have lived"
-    },
-    {
-      "id": "dc668365-165a-453f-a353-3075948d579a",
-      "text": "Should Thor have died"
-    },
-    {
-      "id": "1de98ee2-777a-4ca7-b6dc-2e4cfd0f5ed0",
-      "text": "Should Natasha Romanoff have lived"
     }
   ],
   "answers": {
     "8b614d53-7664-4b96-be9f-ea0f938450f7": "yes",
-    "3db437df-b345-483d-a14b-c266b1a248e3": "no",
-    "621c9de5-eaa6-4e67-94a7-927a234b11c0": "yes",
-    "dc668365-165a-453f-a353-3075948d579a": "yes",
-    "1de98ee2-777a-4ca7-b6dc-2e4cfd0f5ed0": "yes"
+    "3db437df-b345-483d-a14b-c266b1a248e3": "no"
   }
 }
