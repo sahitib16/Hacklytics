@@ -1,0 +1,78 @@
+{
+  "id": "avengers-endgame",
+  "title": "Avengers: Endgame",
+  "year": 2019,
+  "predictions": {
+    "imdb": {
+      "current": 84.0,
+      "predicted": 83.0,
+      "delta": -1.0
+    },
+    "rt": {
+      "current": 94.0,
+      "predicted": 93.0,
+      "delta": -1.0
+    },
+    "fanRating": {
+      "positivePercent": 66.67,
+      "negativePercent": 33.33,
+      "netSentiment": 33.33
+    },
+    "boxOffice": {
+      "currentUsd": 858373000,
+      "predictedUsd": 815454350,
+      "deltaPercent": -5.0
+    }
+  },
+  "assumptions": [
+    "User preferences for character fates, specifically Thanos living, Thor dying, and Natasha Romanoff living, indicate some divergence from the film's narrative choices, likely resulting in a slight negative adjustment to critical and audience scores.",
+    "The moderately positive net fan sentiment (33.33%), while generally favorable, suggests that the film's existing box office performance may represent its peak, with limited potential for significant further growth due to mixed opinions on character outcomes."
+  ],
+  "optimal": {
+    "attemptedCombos": 32,
+    "evaluatedCombos": 1,
+    "failedCombos": 31,
+    "failureReasons": {
+      "ResourceExhausted": 31
+    },
+    "bestAnswers": {
+      "8b614d53-7664-4b96-be9f-ea0f938450f7": "no",
+      "3db437df-b345-483d-a14b-c266b1a248e3": "no",
+      "621c9de5-eaa6-4e67-94a7-927a234b11c0": "yes",
+      "dc668365-165a-453f-a353-3075948d579a": "yes",
+      "1de98ee2-777a-4ca7-b6dc-2e4cfd0f5ed0": "yes"
+    },
+    "objectiveScore": 8.766,
+    "bestPrediction": {
+      "id": "avengers-endgame",
+      "title": "Avengers: Endgame",
+      "year": 2019,
+      "predictions": {
+        "imdb": {
+          "current": 84.0,
+          "predicted": 85.0,
+          "delta": 1.0
+        },
+        "rt": {
+          "current": 94.0,
+          "predicted": 95.0,
+          "delta": 1.0
+        },
+        "fanRating": {
+          "positivePercent": 66.67,
+          "negativePercent": 33.33,
+          "netSentiment": 33.33
+        },
+        "boxOffice": {
+          "currentUsd": 858373000,
+          "predictedUsd": 867000000,
+          "deltaPercent": 1.0
+        }
+      },
+      "assumptions": [
+        "If Tony Stark and Natasha Romanoff had lived, and Thanos had lived (as per user preference), it could have led to a marginally more positive reception from some audience segments, impacting overall scores.",
+        "Retaining key characters and a primary antagonist could slightly increase box office performance by appealing to a wider audience that prefers less tragic or more open-ended narratives for beloved figures."
+      ]
+    }
+  }
+}
