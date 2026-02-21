@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import itertools
 import json
 import os
 import re
@@ -164,23 +165,63 @@ def safe_json_load(text: str) -> Any:
     return json.loads(t)
 
 
-def predict_with_gemini(payload: dict[str, Any], top_k_per_query: int = 8) -> Any:
+def get_gemini_model():
     load_dotenv()
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise RuntimeError("Set GEMINI_API_KEY (and/or GOOGLE_API_KEY).")
-
-    # Set both to avoid env-name mismatch across SDK versions.
     os.environ["GEMINI_API_KEY"] = api_key
     os.environ["GOOGLE_API_KEY"] = api_key
-
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    return genai.GenerativeModel("gemini-2.5-flash")
 
+
+def to_float(v: Any, default: float = 0.0) -> float:
+    try:
+        if isinstance(v, str):
+            v = v.replace("%", "").replace(",", "").strip()
+        return float(v)
+    except Exception:
+        return default
+
+
+def objective_score(pred: dict[str, Any]) -> float:
+    p = pred.get("predictions", {})
+    imdb_delta = to_float(p.get("imdb", {}).get("delta"), 0.0)
+    rt_delta = to_float(p.get("rt", {}).get("delta"), 0.0)
+    fan_net = to_float(p.get("fanRating", {}).get("netSentiment"), 0.0)
+    box_delta_pct = to_float(p.get("boxOffice", {}).get("deltaPercent"), 0.0)
+    # Weighted objective to rank "best" overall market/reception outcome.
+    return imdb_delta + rt_delta + (0.2 * fan_net) + (0.1 * box_delta_pct)
+
+
+def prepare_retrieval_context(payload: dict[str, Any], top_k_per_query: int = 8) -> dict[str, Any]:
     hits = retrieve_related_hits(payload, top_k_per_query=top_k_per_query)
     fan = fan_sentiment_from_hits(hits)
     base = extract_market_baseline(hits)
     context = build_context(hits)
+    return {
+        "hits": hits,
+        "fan": fan,
+        "base": base,
+        "context": context,
+    }
+
+
+def predict_with_gemini(
+    payload: dict[str, Any],
+    top_k_per_query: int = 8,
+    prepared: dict[str, Any] | None = None,
+    model: Any | None = None,
+) -> Any:
+    if model is None:
+        model = get_gemini_model()
+    if prepared is None:
+        prepared = prepare_retrieval_context(payload, top_k_per_query=top_k_per_query)
+
+    fan = prepared["fan"]
+    base = prepared["base"]
+    context = prepared["context"]
 
     prompt = f"""
 You are a movie market forecaster.
@@ -243,17 +284,124 @@ Rules:
     return safe_json_load(response.text)
 
 
+def compute_optimal_combination(
+    payload: dict[str, Any],
+    top_k_per_query: int,
+    max_combos: int = 256,
+    prepared: dict[str, Any] | None = None,
+    model: Any | None = None,
+) -> dict[str, Any]:
+    questions = payload.get("questions", [])
+    qids = [str(q.get("id", "")) for q in questions if str(q.get("id", ""))]
+    if not qids:
+        return {
+            "evaluatedCombos": 0,
+            "bestAnswers": {},
+            "objectiveScore": 0.0,
+            "note": "No question ids provided.",
+        }
+
+    total_combos = 2 ** len(qids)
+    if total_combos > max_combos:
+        return {
+            "evaluatedCombos": 0,
+            "bestAnswers": {},
+            "objectiveScore": 0.0,
+            "note": f"Skipped optimal search: total combinations {total_combos} exceeds cap {max_combos}.",
+        }
+
+    best_result = None
+    best_answers = None
+    best_score = None
+    attempted = 0
+    evaluated = 0
+    failed = 0
+    failure_reasons: dict[str, int] = {}
+
+    for combo in itertools.product(["yes", "no"], repeat=len(qids)):
+        attempted += 1
+        combo_answers = {qid: ans for qid, ans in zip(qids, combo)}
+        combo_payload = {
+            "questions": questions,
+            "answers": combo_answers,
+        }
+        pred = None
+        err_reason = None
+        # Retry a couple of times for transient LLM/API issues.
+        for _ in range(3):
+            try:
+                pred = predict_with_gemini(
+                    combo_payload,
+                    top_k_per_query=top_k_per_query,
+                    prepared=prepared,
+                    model=model,
+                )
+                break
+            except Exception as e:
+                err_reason = type(e).__name__
+        if pred is None:
+            failed += 1
+            key = err_reason or "UnknownError"
+            failure_reasons[key] = failure_reasons.get(key, 0) + 1
+            continue
+        score = objective_score(pred if isinstance(pred, dict) else {})
+        evaluated += 1
+        if best_score is None or score > best_score:
+            best_score = score
+            best_result = pred
+            best_answers = combo_answers
+
+    if best_result is None:
+        return {
+            "attemptedCombos": attempted,
+            "evaluatedCombos": evaluated,
+            "failedCombos": failed,
+            "failureReasons": failure_reasons,
+            "bestAnswers": {},
+            "objectiveScore": 0.0,
+            "note": "No valid predictions from combination search.",
+        }
+
+    return {
+        "attemptedCombos": attempted,
+        "evaluatedCombos": evaluated,
+        "failedCombos": failed,
+        "failureReasons": failure_reasons,
+        "bestAnswers": best_answers,
+        "objectiveScore": round(float(best_score), 4),
+        "bestPrediction": best_result,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Gemini prediction JSON using Actian vector evidence.")
     parser.add_argument("--input", required=True, help="Input JSON path (questions + answers).")
     parser.add_argument("--output", default=None, help="Optional output JSON file.")
     parser.add_argument("--top-k-per-query", type=int, default=8)
+    parser.add_argument("--skip-optimal", action="store_true", help="Skip exhaustive yes/no combination search.")
+    parser.add_argument("--max-combos", type=int, default=256, help="Max combinations allowed for optimal search.")
     args = parser.parse_args()
 
     with open(args.input, "r", encoding="utf-8") as f:
         payload = json.load(f)
 
-    result = predict_with_gemini(payload, top_k_per_query=args.top_k_per_query)
+    model = get_gemini_model()
+    prepared = prepare_retrieval_context(payload, top_k_per_query=args.top_k_per_query)
+    result = predict_with_gemini(
+        payload,
+        top_k_per_query=args.top_k_per_query,
+        prepared=prepared,
+        model=model,
+    )
+    if isinstance(result, dict) and not args.skip_optimal:
+        result["optimal"] = compute_optimal_combination(
+            payload=payload,
+            top_k_per_query=args.top_k_per_query,
+            max_combos=args.max_combos,
+            prepared=prepared,
+            model=model,
+        )
+
     print(json.dumps(result, indent=2, ensure_ascii=True))
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
