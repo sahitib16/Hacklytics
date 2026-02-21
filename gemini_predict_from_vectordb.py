@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import itertools
 import json
 import os
 import re
@@ -345,6 +344,82 @@ Rules:
     return safe_json_load(response.text)
 
 
+def compute_optimal_from_question_impacts(
+    question_impacts: list[dict[str, Any]],
+    max_combos: int = 256,
+) -> dict[str, Any]:
+    qids = [str(q.get("id", "")) for q in question_impacts if str(q.get("id", ""))]
+    questions_by_id = {str(q.get("id", "")): q for q in question_impacts}
+
+    if not qids:
+        return {
+            "evaluatedCombos": 0,
+            "bestAnswers": {},
+            "objectiveScore": 0.0,
+            "note": "No question impacts provided.",
+        }
+
+    total_combos = 2 ** len(qids)
+    if total_combos > max_combos:
+        return {
+            "evaluatedCombos": 0,
+            "bestAnswers": {},
+            "objectiveScore": 0.0,
+            "note": f"Skipped optimal search: total combinations {total_combos} exceeds cap {max_combos}.",
+        }
+
+    # Use the impact for "yes" as baseline direction; "no" flips sign.
+    yes_impacts: dict[str, dict[str, float]] = {}
+    for qid in qids:
+        q = questions_by_id.get(qid, {})
+        imp = q.get("impact", {}) if isinstance(q.get("impact", {}), dict) else {}
+        yes_impacts[qid] = {
+            "imdbDelta": to_float(imp.get("imdbDelta"), 0.0),
+            "rtDelta": to_float(imp.get("rtDelta"), 0.0),
+            "fanDelta": to_float(imp.get("fanDelta"), 0.0),
+            "boxOfficeDeltaPct": to_float(imp.get("boxOfficeDeltaPct"), 0.0),
+        }
+
+    best_score = None
+    best_answers: dict[str, str] = {}
+    best_delta = {"imdbDelta": 0.0, "rtDelta": 0.0, "fanDelta": 0.0, "boxOfficeDeltaPct": 0.0}
+
+    for mask in range(total_combos):
+        answers: dict[str, str] = {}
+        delta = {"imdbDelta": 0.0, "rtDelta": 0.0, "fanDelta": 0.0, "boxOfficeDeltaPct": 0.0}
+        for i, qid in enumerate(qids):
+            ans = "yes" if ((mask >> i) & 1) else "no"
+            answers[qid] = ans
+            sign = 1.0 if ans == "yes" else -1.0
+            yi = yes_impacts[qid]
+            for k in delta:
+                delta[k] += sign * yi[k]
+
+        # Local objective aligned with existing ranking intent.
+        score = (
+            delta["imdbDelta"]
+            + delta["rtDelta"]
+            + (0.2 * delta["fanDelta"])
+            + (0.1 * delta["boxOfficeDeltaPct"])
+        )
+        if best_score is None or score > best_score:
+            best_score = score
+            best_answers = answers
+            best_delta = delta
+
+    return {
+        "evaluatedCombos": total_combos,
+        "bestAnswers": best_answers,
+        "objectiveScore": round(float(best_score or 0.0), 4),
+        "bestDelta": {
+            "imdbDelta": round(best_delta["imdbDelta"], 3),
+            "rtDelta": round(best_delta["rtDelta"], 3),
+            "fanDelta": round(best_delta["fanDelta"], 3),
+            "boxOfficeDeltaPct": round(best_delta["boxOfficeDeltaPct"], 3),
+        },
+    }
+
+
 def compute_optimal_combination(
     payload: dict[str, Any],
     top_k_per_query: int,
@@ -352,6 +427,7 @@ def compute_optimal_combination(
     prepared: dict[str, Any] | None = None,
     model: Any | None = None,
 ) -> dict[str, Any]:
+    # Deprecated heavy path kept for compatibility; not used in main flow.
     questions = payload.get("questions", [])
     qids = [str(q.get("id", "")) for q in questions if str(q.get("id", ""))]
     if not qids:
@@ -454,19 +530,16 @@ def main() -> None:
         prepared=prepared,
         model=model,
     )
-    if isinstance(result, dict) and not args.skip_optimal:
-        result["optimal"] = compute_optimal_combination(
-            payload=payload,
-            top_k_per_query=args.top_k_per_query,
-            max_combos=args.max_combos,
-            prepared=prepared,
-            model=model,
-        )
     if isinstance(result, dict):
         try:
             result["questionImpacts"] = llm_question_impacts(payload=payload, prepared=prepared, model=model)
         except Exception:
             result["questionImpacts"] = []
+        if not args.skip_optimal:
+            result["optimal"] = compute_optimal_from_question_impacts(
+                question_impacts=result.get("questionImpacts", []),
+                max_combos=args.max_combos,
+            )
 
     print(json.dumps(result, indent=2, ensure_ascii=True))
     if args.output:

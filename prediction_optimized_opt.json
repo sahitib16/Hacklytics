@@ -1,0 +1,69 @@
+{
+  "id": "avengers-endgame",
+  "title": "Avengers: Endgame",
+  "year": 2019,
+  "predictions": {
+    "imdb": {
+      "current": 84.0,
+      "predicted": 84.1,
+      "delta": 0.1
+    },
+    "rt": {
+      "current": 94.0,
+      "predicted": 94.1,
+      "delta": 0.1
+    },
+    "fanRating": {
+      "positivePercent": 66.67,
+      "negativePercent": 33.33,
+      "netSentiment": 33.33
+    },
+    "boxOffice": {
+      "currentUsd": 858373000,
+      "predictedUsd": 866956730,
+      "deltaPercent": 1.0
+    }
+  },
+  "assumptions": [
+    "User's agreement with Tony Stark's death aligns with the movie's well-received and impactful plot.",
+    "User's desire for Captain America not to die aligns with his actual, positively received ending in the film, contributing to overall fan satisfaction."
+  ],
+  "questionImpacts": [
+    {
+      "id": "8b614d53-7664-4b96-be9f-ea0f938450f7",
+      "text": "Should Tony Stark have died?",
+      "answer": "yes",
+      "impact": {
+        "imdbDelta": 0.8,
+        "rtDelta": 3.0,
+        "fanDelta": 12.0,
+        "boxOfficeDeltaPct": 8.0
+      }
+    },
+    {
+      "id": "3db437df-b345-483d-a14b-c266b1a248e3",
+      "text": "Should Captain America have died",
+      "answer": "no",
+      "impact": {
+        "imdbDelta": 0.4,
+        "rtDelta": 1.5,
+        "fanDelta": 7.0,
+        "boxOfficeDeltaPct": 3.0
+      }
+    }
+  ],
+  "optimal": {
+    "evaluatedCombos": 4,
+    "bestAnswers": {
+      "8b614d53-7664-4b96-be9f-ea0f938450f7": "yes",
+      "3db437df-b345-483d-a14b-c266b1a248e3": "yes"
+    },
+    "objectiveScore": 10.6,
+    "bestDelta": {
+      "imdbDelta": 1.2,
+      "rtDelta": 4.5,
+      "fanDelta": 19.0,
+      "boxOfficeDeltaPct": 11.0
+    }
+  }
+}
